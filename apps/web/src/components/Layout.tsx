@@ -6,6 +6,9 @@ import {
   Users,
   Target,
   Activity,
+  BarChart3,
+  MessageSquare,
+  Shield,
   Settings,
   LogOut,
   Menu,
@@ -19,7 +22,10 @@ const navigation = [
   { name: 'Students', href: '/students', icon: Users },
   { name: 'Goals', href: '/goals', icon: Target },
   { name: 'Sessions', href: '/sessions', icon: Activity },
-  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Reports', href: '/reports', icon: BarChart3 },
+  { name: 'Messages', href: '/messages', icon: MessageSquare },
+  { name: 'Staff', href: '/admin/users', icon: Shield },
+  { name: 'Config', href: '/admin', icon: Settings },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -45,7 +51,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.href;
+              const isActive = item.href === '/' ? location.pathname === '/' : location.pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.name}
@@ -76,7 +82,7 @@ export function Layout({ children }: { children: ReactNode }) {
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.href;
+              const isActive = item.href === '/' ? location.pathname === '/' : location.pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.name}
