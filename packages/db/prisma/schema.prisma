@@ -1,0 +1,710 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Authentication & User Management ────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  avatar        String?
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  roles           UserRole[]
+  ownedStudents   Student[]           @relation("StudentOwner")
+  teacherSessions SessionAssignment[]
+  trialLogs       Trial[]
+  behaviorIncidents BehaviorIncident[]
+  sessionSummaries SessionSummary[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+  sentMessages    Message[]           @relation("MessageSender")
+  parentUser      ParentUser?
+  schedules       StaffSchedule[]
+  directorNotes   DirectorNote[]
+  masteryPrimary  MasteryCheck[]      @relation("MasteryPrimary")
+  masteryVerifierB MasteryCheck[]     @relation("MasteryVerifierB")
+  masteryVerifierC MasteryCheck[]     @relation("MasteryVerifierC")
+  masteryApprover MasteryCheck[]      @relation("MasteryApprover")
+
+  @@index([email])
+  @@index([isActive])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false) // System-critical roles cannot be deleted
+  isDeletable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@index([isSystem])
+}
+
+model UserRole {
+  id       String @id @default(cuid())
+  userId   String
+  roleId   String
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+}
+
+model Permission {
+  id        String @id @default(cuid())
+  module    String // e.g., "students", "sessions", "goals", "assessments"
+  action    String // e.g., "view", "create", "edit", "delete", "approve"
+  createdAt DateTime @default(now())
+
+  roles     RolePermission[]
+
+  @@unique([module, action])
+  @@index([module])
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String
+  permissionId String
+  allowed      Boolean @default(true)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+// ─── Student Enrollment & Placement ──────────────────────────────────────────
+
+model Student {
+  id              String      @id @default(cuid())
+  firstName       String
+  middleName      String?
+  lastName        String
+  dateOfBirth     DateTime
+  diagnosis       String?
+  programType     ProgramType
+  therapyGroup    TherapyGroup
+  status          StudentStatus @default(IN_ASSESSMENT)
+  station         Station?
+  headshotUrl     String?
+  baselineVideoUrl String?
+  enrolledAt      DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relationships
+  ownerId         String
+  owner           User        @relation("StudentOwner", fields: [ownerId], references: [id])
+  guardianName    String?
+  guardianPhone   String?
+  guardianEmail   String?
+  
+  enrollments     EnrollmentDraft[]
+  documents       StudentDocument[]
+  assessments     Assessment[]
+  iups            IUP[]
+  goalAssignments GoalAssignment[]
+  sessionAssignments SessionAssignment[]
+  behaviorIncidents BehaviorIncident[]
+  sessionSummaries SessionSummary[]
+  trialLogs       Trial[]
+  homeObservations HomeObservation[]
+  messages        Message[]
+  studentNotes    DirectorNote[]
+  parentUser      ParentUser?
+
+  @@index([status])
+  @@index([programType])
+  @@index([therapyGroup])
+  @@index([ownerId])
+}
+
+enum ProgramType {
+  REGULAR
+  PULLED_OUT
+}
+
+enum TherapyGroup {
+  BASIC_THERAPY
+  FUNCTIONAL_LIVING_SKILLS
+}
+
+enum StudentStatus {
+  IN_ASSESSMENT
+  ASSESSMENT_COMPLETE
+  READY_FOR_IUP
+  ACTIVE_THERAPY
+  INACTIVE
+}
+
+enum Station {
+  STATION_1 // Basic Skills
+  STATION_2 // Advanced Skills
+}
+
+model EnrollmentDraft {
+  id          String   @id @default(cuid())
+  studentId   String?
+  data        Json     // Serialized wizard state
+  currentStep Int      @default(0)
+  status      DraftStatus @default(DRAFT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([updatedAt])
+}
+
+enum DraftStatus {
+  DRAFT
+  STALE
+  SUBMITTED
+}
+
+model StudentDocument {
+  id          String     @id @default(cuid())
+  studentId   String
+  type        DocumentType
+  fileName    String
+  fileUrl     String
+  fileSize    Int
+  mimeType    String
+  uploadedAt  DateTime   @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+enum DocumentType {
+  BIRTH_CERTIFICATE
+  MEDICAL_DIAGNOSIS
+  AGREEMENT_DOCUMENT
+  HEADSHOT_PHOTO
+  BASELINE_VIDEO
+  OTHER
+}
+
+// ─── 6-Week Assessment Phase ────────────────────────────────────────────────
+
+model Assessment {
+  id          String           @id @default(cuid())
+  studentId   String
+  type        AssessmentType
+  status      AssessmentStatus @default(DRAFT)
+  data        Json             // Assessment-specific data (ABLLS scores, MASS responses, etc.)
+  completedAt DateTime?
+  reviewedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  student     Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  sessions    AssessmentSession[]
+
+  @@index([studentId])
+  @@index([type])
+  @@index([status])
+}
+
+enum AssessmentType {
+  SKILLS_ABLLS
+  BEHAVIOR_MASS
+  BEHAVIOR_FAST
+  PREFERENCE
+  SENSORY_TIME
+}
+
+enum AssessmentStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETE
+  REVIEWED
+}
+
+model AssessmentSession {
+  id             String   @id @default(cuid())
+  assessmentId   String
+  teacherId      String
+  startedAt      DateTime @default(now())
+  completedAt    DateTime?
+  
+  assessment     Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+}
+
+// ─── Goal Bank & Clinical Quality Management ────────────────────────────────
+
+model Goal {
+  id              String    @id @default(cuid())
+  name            String
+  domainId        String
+  description     String
+  masteryCriteria Json?     // Template for mastery criteria
+  suggestedAgeMin Int?
+  suggestedAgeMax Int?
+  type            GoalType  @default(STANDARD)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  domain          GoalDomain @relation(fields: [domainId], references: [id])
+  assignments     GoalAssignment[]
+  taskAnalysisSteps TaskAnalysisStep[]
+
+  @@index([domainId])
+  @@index([isActive])
+  @@index([name])
+}
+
+enum GoalType {
+  STANDARD
+  TASK_ANALYSIS
+}
+
+model GoalDomain {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  goals Goal[]
+
+  @@index([isActive])
+}
+
+model GoalAssignment {
+  id          String           @id @default(cuid())
+  studentId   String
+  goalId      String
+  station     Station
+  iupId       String?
+  notes       String?
+  status      GoalStatus       @default(ACTIVE)
+  progress    Float            @default(0)
+  assignedAt  DateTime         @default(now())
+  masteredAt  DateTime?
+  updatedAt   DateTime         @updatedAt
+
+  student     Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  goal        Goal             @relation(fields: [goalId], references: [id])
+  iup         IUP?             @relation(fields: [iupId], references: [id])
+  trials      Trial[]
+  masteryChecks MasteryCheck[]
+
+  @@unique([studentId, goalId, station])
+  @@index([studentId])
+  @@index([goalId])
+  @@index([status])
+}
+
+enum GoalStatus {
+  ACTIVE
+  IN_PROGRESS
+  MASTERED
+  PENDING_APPROVAL
+  REMOVED
+}
+
+model TaskAnalysisStep {
+  id              String @id @default(cuid())
+  goalId          String
+  name            String
+  sortOrder       Int
+  masteryCriteria Json?
+  
+  goal            Goal   @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  trials          Trial[]
+
+  @@index([goalId])
+}
+
+// ─── Active Therapy Delivery ────────────────────────────────────────────────
+
+model SessionBlock {
+  id          String   @id @default(cuid())
+  name        String
+  startTime   DateTime
+  endTime     DateTime
+  durationMin Int
+  createdAt   DateTime @default(now())
+
+  assignments SessionAssignment[]
+  sessions    SessionSummary[]
+
+  @@index([startTime])
+}
+
+model SessionAssignment {
+  id          String      @id @default(cuid())
+  sessionId   String
+  teacherId   String
+  studentId   String
+  station     Station
+  isPrimary   Boolean     @default(true) // Active vs Secondary student
+  assignedAt  DateTime    @default(now())
+
+  session     SessionBlock @relation(fields: [sessionId], references: [id])
+  teacher     User         @relation(fields: [teacherId], references: [id])
+  student     Student      @relation(fields: [studentId], references: [id])
+
+  @@unique([sessionId, teacherId, studentId])
+  @@index([sessionId])
+  @@index([teacherId])
+  @@index([studentId])
+}
+
+model Trial {
+  id              String       @id @default(cuid())
+  studentId       String
+  goalId          String
+  assignmentId    String?
+  teacherId       String
+  stepId          String?      // For task analysis goals
+  promptLevel     String       // e.g., "FP", "PP", "G", "+"
+  outcome         TrialOutcome
+  timestamp       DateTime     @default(now())
+  notes           String?
+
+  student         Student       @relation(fields: [studentId], references: [id])
+  goal            GoalAssignment @relation(fields: [goalId], references: [id])
+  teacher         User          @relation(fields: [teacherId], references: [id])
+  step            TaskAnalysisStep? @relation(fields: [stepId], references: [id])
+
+  syncStatus      SyncStatus    @default(PENDING)
+
+  @@index([studentId])
+  @@index([goalId])
+  @@index([teacherId])
+  @@index([timestamp])
+  @@index([syncStatus])
+}
+
+enum TrialOutcome {
+  SUCCESS
+  FAILURE
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+}
+
+model BehaviorIncident {
+  id              String    @id @default(cuid())
+  studentId       String
+  sessionId       String?
+  goalId          String?
+  teacherId       String
+  behaviorName    String
+  behaviorDefinition String?
+  category        String?
+  frequency       Int?
+  intensity       String?
+  location        String?
+  antecedent      String
+  consequence     String
+  notes           String?
+  timestamp       DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  student         Student   @relation(fields: [studentId], references: [id])
+  teacher         User      @relation(fields: [teacherId], references: [id])
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([timestamp])
+}
+
+model MasteryCheck {
+  id              String           @id @default(cuid())
+  goalAssignmentId String
+  primaryTeacherId String
+  verifierBId     String?
+  verifierCId     String?
+  status          MasteryStatus    @default(PENDING_VERIFICATION)
+  teacherASummary Json             // Primary teacher's data
+  verifierBData   Json?            // Verifier B's outcome
+  verifierCData   Json?            // Verifier C's outcome
+  approverId      String?
+  approvalNotes   String?
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  goalAssignment  GoalAssignment   @relation(fields: [goalAssignmentId], references: [id])
+  primaryTeacher  User             @relation("MasteryPrimary", fields: [primaryTeacherId], references: [id])
+  verifierB       User?            @relation("MasteryVerifierB", fields: [verifierBId], references: [id])
+  verifierC       User?            @relation("MasteryVerifierC", fields: [verifierCId], references: [id])
+  approver        User?            @relation("MasteryApprover", fields: [approverId], references: [id])
+
+  @@index([goalAssignmentId])
+  @@index([status])
+}
+
+enum MasteryStatus {
+  PENDING_VERIFICATION
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+model SessionSummary {
+  id          String    @id @default(cuid())
+  sessionId   String
+  studentId   String
+  teacherId   String
+  station     Station
+  startTime   DateTime
+  endTime     DateTime
+  totalTrials Int       @default(0)
+  goalData    Json      // Per-goal trial breakdown
+  notes       String?
+  status      SessionStatus @default(DRAFT)
+  submittedAt DateTime?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  session     SessionBlock @relation(fields: [sessionId], references: [id])
+  student     Student      @relation(fields: [studentId], references: [id])
+  teacher     User         @relation(fields: [teacherId], references: [id])
+
+  @@index([sessionId])
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([status])
+}
+
+enum SessionStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+}
+
+// ─── IUP Generation ─────────────────────────────────────────────────────────
+
+model IUP {
+  id              String    @id @default(cuid())
+  studentId       String
+  status          IUPStatus @default(DRAFT)
+  data            Json      // Full IUP data (12 sections)
+  finalizedAt     DateTime?
+  archivedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  student         Student   @relation(fields: [studentId], references: [id])
+  goalAssignments GoalAssignment[]
+
+  @@index([studentId])
+  @@index([status])
+}
+
+enum IUPStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+// ─── Staff Scheduling ───────────────────────────────────────────────────────
+
+model StaffSchedule {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime
+  blockId     String?
+  isAvailable Boolean  @default(true)
+  reason      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date, blockId])
+  @@index([userId])
+  @@index([date])
+}
+
+// ─── Parent Portal ──────────────────────────────────────────────────────────
+
+model ParentUser {
+  id          String   @id @default(cuid())
+  userId      String?  @unique
+  studentId   String   @unique
+  name        String
+  email       String   @unique
+  phone       String?
+  passwordHash String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User?    @relation(fields: [userId], references: [id])
+  student     Student  @relation(fields: [studentId], references: [id])
+  observations HomeObservation[]
+  messages    Message[]
+
+  @@index([email])
+}
+
+model HomeObservation {
+  id          String   @id @default(cuid())
+  parentId    String
+  studentId   String
+  observation String
+  timestamp   DateTime @default(now())
+
+  parent      ParentUser @relation(fields: [parentId], references: [id])
+  student     Student    @relation(fields: [studentId], references: [id])
+
+  @@index([parentId])
+  @@index([studentId])
+  @@index([timestamp])
+}
+
+// ─── Communication ──────────────────────────────────────────────────────────
+
+model Message {
+  id          String   @id @default(cuid())
+  senderId    String
+  recipientId String?
+  parentId    String?
+  studentId   String
+  subject     String?
+  content     String
+  isRead      Boolean  @default(false)
+  sentAt      DateTime @default(now())
+
+  sender      User       @relation("MessageSender", fields: [senderId], references: [id])
+  parent      ParentUser? @relation(fields: [parentId], references: [id])
+  student     Student    @relation(fields: [studentId], references: [id])
+
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([parentId])
+  @@index([studentId])
+  @@index([sentAt])
+}
+
+// ─── Notifications ──────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // e.g., "mastery_approval", "session_submitted", "draft_stale"
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// ─── Administration & Configuration ─────────────────────────────────────────
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  category  String   // e.g., "trial_logging", "session_schedule", "abc_dropdowns"
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([key])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // e.g., "create", "update", "delete", "login", "access_pii"
+  entity    String   // e.g., "student", "trial", "goal"
+  entityId  String?
+  oldData   Json?
+  newData   Json?
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity])
+  @@index([entityId])
+  @@index([timestamp])
+}
+
+model DirectorNote {
+  id        String   @id @default(cuid())
+  studentId String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student   Student  @relation(fields: [studentId], references: [id])
+  author    User     @relation(fields: [authorId], references: [id])
+
+  @@index([studentId])
+  @@index([authorId])
+}
+
+// ─── Reporting ──────────────────────────────────────────────────────────────
+
+model Report {
+  id          String       @id @default(cuid())
+  studentId   String?
+  type        ReportType
+  data        Json
+  generatedBy String
+  generatedAt DateTime     @default(now())
+
+  @@index([studentId])
+  @@index([type])
+  @@index([generatedAt])
+}
+
+enum ReportType {
+  SESSION_SUMMARY
+  BI_ANNUAL
+  STUDENT_PROGRESS
+  FOUNDATION_OVERVIEW
+}
