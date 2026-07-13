@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import { Search, Plus, Filter } from 'lucide-react';
@@ -33,6 +34,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export function StudentsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
@@ -114,7 +116,11 @@ export function StudentsPage() {
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
               {data?.data?.map((student: Student) => (
-                <tr key={student.id} className="hover:bg-gray-50">
+                <tr
+                  key={student.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => navigate(`/students/${student.id}`)}
+                >
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-primary-700">
