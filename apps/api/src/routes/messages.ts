@@ -16,6 +16,15 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const messages = await MessageService.getInbox(req.user!.id);
+    res.json({ success: true, data: messages });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
+  }
+});
+
 router.get('/inbox', async (req: Request, res: Response) => {
   try {
     const messages = await MessageService.getInbox(req.user!.id);

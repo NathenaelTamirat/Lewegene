@@ -168,6 +168,38 @@ export class ReportService {
     };
   }
 
+  static async getIncidentTrends(studentId?: string, start?: string, end?: string) {
+    const where: any = {};
+
+    if (studentId) {
+      where.studentId = studentId;
+    }
+
+    if (start && end) {
+      where.timestamp = {
+        gte: new Date(start),
+        lte: new Date(end),
+      };
+    }
+
+    const incidents = await prisma.behaviorIncident.findMany({
+      where,
+      select: {
+        timestamp: true,
+        category: true,
+      },
+      orderBy: { timestamp: 'asc' },
+    });
+
+    const trends = incidents.map((i) => ({
+      date: i.timestamp.toISOString().split('T')[0],
+      count: 1,
+      category: i.category || 'OTHER',
+    }));
+
+    return trends;
+  }
+
   static async generateBiAnnual(studentId: string) {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);

@@ -154,6 +154,117 @@ export class SessionService {
     return updated;
   }
 
+  static async getBlockSummary(sessionId: string) {
+    const block = await prisma.sessionBlock.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!block) {
+      throw new Error('Session block not found');
+    }
+
+    const summaries = await prisma.sessionSummary.findMany({
+      where: { sessionId },
+      include: {
+        student: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+        teacher: {
+          select: { firstName: true, lastName: true },
+        },
+      },
+      orderBy: { startTime: 'desc' },
+    });
+
+    const incidents = await prisma.behaviorIncident.findMany({
+      where: { sessionId },
+      orderBy: { timestamp: 'desc' },
+    });
+
+    const assignment = summaries[0];
+    return {
+      id: block.id,
+      name: block.name,
+      station: assignment?.station || block.name,
+      startTime: block.startTime,
+      endTime: block.endTime,
+      status: assignment?.status || 'IN_PROGRESS',
+      teacher: assignment?.teacher || { firstName: '', lastName: '' },
+      assignments: summaries.map((s) => ({
+        student: s.student,
+        goals: (s.goalData as any) || {},
+      })),
+      incidents,
+    };
+  }
+
+  static async submitBlockSummary(sessionId: string, teacherId: string, notes?: string) {
+    const existing = await prisma.sessionSummary.findFirst({
+      where: { sessionId, teacherId },
+    });
+
+    if (existing) {
+      const updated = await prisma.sessionSummary.update({
+        where: { id: existing.id },
+        data: {
+          status: 'SUBMITTED',
+          submittedAt: new Date(),
+          notes: notes || existing.notes,
+        },
+      });
+      return updated;
+    }
+
+    const summary = await prisma.sessionSummary.create({
+      data: {
+        sessionId,
+        studentId: '',
+        teacherId,
+        station: 'STATION_1',
+        startTime: new Date(),
+        endTime: new Date(),
+        totalTrials: 0,
+        goalData: {},
+        notes,
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+      },
+    });
+
+    return summary;
+  }
+
+  static async saveDraftSummary(sessionId: string, teacherId: string, notes?: string) {
+    const existing = await prisma.sessionSummary.findFirst({
+      where: { sessionId, teacherId },
+    });
+
+    if (existing) {
+      const updated = await prisma.sessionSummary.update({
+        where: { id: existing.id },
+        data: { notes: notes || existing.notes },
+      });
+      return updated;
+    }
+
+    const summary = await prisma.sessionSummary.create({
+      data: {
+        sessionId,
+        studentId: '',
+        teacherId,
+        station: 'STATION_1',
+        startTime: new Date(),
+        endTime: new Date(),
+        totalTrials: 0,
+        goalData: {},
+        notes,
+        status: 'DRAFT',
+      },
+    });
+
+    return summary;
+  }
+
   static async getSummaries(query: { studentId?: string; teacherId?: string; startDate?: string; endDate?: string }) {
     const where = {
       ...(query.studentId && { studentId: query.studentId }),

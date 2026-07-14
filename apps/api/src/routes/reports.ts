@@ -33,6 +33,20 @@ router.get('/foundation-overview', authorize('reports:view'), async (_req: Reque
   }
 });
 
+router.get('/incident-trends', async (req: Request, res: Response) => {
+  try {
+    const { studentId, start, end } = req.query;
+    const trends = await ReportService.getIncidentTrends(
+      studentId as string,
+      start as string,
+      end as string
+    );
+    res.json({ success: true, data: trends });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
+  }
+});
+
 router.get('/bi-annual/:studentId', async (req: Request, res: Response) => {
   try {
     const report = await ReportService.generateBiAnnual(getParam(req, 'studentId'));

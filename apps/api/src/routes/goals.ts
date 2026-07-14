@@ -36,6 +36,19 @@ router.get('/caseload/:studentId', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/goals/:id/steps
+router.get('/:id/steps', async (req: Request, res: Response) => {
+  try {
+    const steps = await GoalService.getTaskSteps(getParam(req, 'id'));
+    res.json({ success: true, data: steps });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Goal not found',
+    });
+  }
+});
+
 // GET /api/goals/:id
 router.get('/:id', async (req: Request, res: Response) => {
   try {

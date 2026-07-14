@@ -254,6 +254,23 @@ export class GoalService {
     return { message: 'Goal removed from student' };
   }
 
+  static async getTaskSteps(goalId: string) {
+    const goal = await prisma.goal.findUnique({
+      where: { id: goalId },
+    });
+
+    if (!goal) {
+      throw new Error('Goal not found');
+    }
+
+    const steps = await prisma.taskAnalysisStep.findMany({
+      where: { goalId },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    return steps;
+  }
+
   static async getStudentCaseload(studentId: string) {
     const assignments = await prisma.goalAssignment.findMany({
       where: {
