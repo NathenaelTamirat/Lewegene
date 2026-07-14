@@ -16,6 +16,7 @@ import {
   ClipboardList,
   Home,
   Calendar,
+  Award,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../lib/utils';
@@ -33,6 +34,7 @@ const navigation = [
   { name: 'Scheduling', href: '/scheduling', icon: Calendar },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Charts', href: '/charts', icon: BarChart3 },
+  { name: 'Mastery', href: '/mastery', icon: Award },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'Parent Portal', href: '/parent', icon: Home },
   { name: 'Staff', href: '/admin/users', icon: Shield },
