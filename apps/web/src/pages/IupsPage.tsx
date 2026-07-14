@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { AssessmentPipeline } from '../components/AssessmentPipeline';
 import { cn } from '../lib/utils';
-import { FileText, Plus, CheckCircle, Archive, Eye, Edit2 } from 'lucide-react';
+import { FileText, Plus, CheckCircle, Archive, Eye, Edit2, Columns } from 'lucide-react';
 
 interface IUP {
   id: string;
@@ -43,6 +44,7 @@ const IUP_SECTIONS = [
 
 export function IupsPage() {
   const queryClient = useQueryClient();
+  const [viewTab, setViewTab] = useState<'iups' | 'pipeline'>('iups');
   const [filter, setFilter] = useState<string>('');
   const [selectedIup, setSelectedIup] = useState<IUP | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -101,19 +103,41 @@ export function IupsPage() {
       </div>
 
       <div className="flex gap-2 mb-6">
-        {['', 'DRAFT', 'ACTIVE', 'ARCHIVED'].map(f => (
+        {[
+          { id: 'iups' as const, label: 'IUPs', icon: FileText },
+          { id: 'pipeline' as const, label: 'Assessment Pipeline', icon: Columns },
+        ].map(tab => (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
+            key={tab.id}
+            onClick={() => setViewTab(tab.id)}
             className={cn(
-              'rounded-full px-3 py-1 text-sm font-medium',
-              filter === f ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              'flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium',
+              viewTab === tab.id ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             )}
           >
-            {f || 'All'}
+            <tab.icon className="h-4 w-4" /> {tab.label}
           </button>
         ))}
       </div>
+
+      {viewTab === 'iups' && (
+        <>
+          <div className="flex gap-2 mb-6">
+            {['', 'DRAFT', 'ACTIVE', 'ARCHIVED'].map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  'rounded-full px-3 py-1 text-sm font-medium',
+                  filter === f ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                )}
+              >
+                {f || 'All'}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
 
       {showNewForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -146,7 +170,11 @@ export function IupsPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {viewTab === 'pipeline' && (
+        <AssessmentPipeline />
+      )}
+
+      {viewTab === 'iups' && (isLoading ? (
         <LoadingSpinner className="h-64" />
       ) : filtered.length === 0 ? (
         <div className="rounded-lg bg-white p-8 text-center shadow">
@@ -211,7 +239,7 @@ export function IupsPage() {
             </div>
           ))}
         </div>
-      )}
+      ))}
 
       {selectedIup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

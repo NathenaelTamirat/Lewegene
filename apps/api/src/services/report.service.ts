@@ -200,6 +200,59 @@ export class ReportService {
     return trends;
   }
 
+  static async getFilteredReports(filters: {
+    studentId?: string;
+    teacherId?: string;
+    station?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const { studentId, teacherId, station, startDate, endDate, page = 1, limit = 20 } = filters;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      status: 'SUBMITTED' as const,
+    };
+    if (studentId) where.studentId = studentId;
+    if (teacherId) where.teacherId = teacherId;
+    if (station) where.station = station;
+    if (startDate || endDate) {
+      where.startTime = {};
+      if (startDate) where.startTime.gte = new Date(startDate);
+      if (endDate) where.startTime.lte = new Date(endDate);
+    }
+
+    const [summaries, total] = await Promise.all([
+      prisma.sessionSummary.findMany({
+        where,
+        include: {
+          student: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+          teacher: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
+        skip,
+        take: limit,
+        orderBy: { startTime: 'desc' },
+      }),
+      prisma.sessionSummary.count({ where }),
+    ]);
+
+    return {
+      data: summaries,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   static async generateBiAnnual(studentId: string) {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);

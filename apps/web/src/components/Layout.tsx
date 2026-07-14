@@ -32,6 +32,7 @@ const navigation = [
   { name: 'Assessments', href: '/assessments', icon: ClipboardList },
   { name: 'IUPs', href: '/iups', icon: Target },
   { name: 'Scheduling', href: '/scheduling', icon: Calendar },
+  { name: 'Ops Management', href: '/scheduling/operations', icon: Settings },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Charts', href: '/charts', icon: BarChart3 },
   { name: 'Mastery', href: '/mastery', icon: Award },

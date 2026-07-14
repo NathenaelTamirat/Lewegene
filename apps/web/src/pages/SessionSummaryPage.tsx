@@ -3,7 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { cn } from '../lib/utils';
-import { ClipboardList, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, Send, Save, FileText, Eye } from 'lucide-react';
+import { ClipboardList, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, Send, Save, Eye, X, Clock, BookOpen } from 'lucide-react';
+
+interface TrialEntry {
+  id: string;
+  promptLevel: string;
+  outcome: 'SUCCESS' | 'FAILURE';
+  notes: string | null;
+  createdAt: string;
+}
 
 interface SessionSummary {
   id: string;
@@ -16,7 +24,7 @@ interface SessionSummary {
   assignments: Array<{
     student: { id: string; firstName: string; lastName: string };
     goals: Array<{
-      goal: { name: string; type: string };
+      goal: { id: string; name: string; type: string };
       totalTrials: number;
       successes: number;
       independence: number;
@@ -42,11 +50,20 @@ interface ActiveBlock {
   station: string;
 }
 
+const promptColors: Record<string, string> = {
+  INDEPENDENT: 'bg-green-100 text-green-800',
+  GESTURAL: 'bg-blue-100 text-blue-800',
+  VERBAL: 'bg-yellow-100 text-yellow-800',
+  MODEL: 'bg-orange-100 text-orange-800',
+  PHYSICAL: 'bg-red-100 text-red-800',
+};
+
 export function SessionSummaryPage() {
   const queryClient = useQueryClient();
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
-  const [showTrialLog, setShowTrialLog] = useState<string | null>(null);
+  const [showTrialLogModal, setShowTrialLogModal] = useState<{ studentId: string; goalId: string; goalName: string } | null>(null);
+  const [expandedIncident, setExpandedIncident] = useState<string | null>(null);
 
   const { data: activeBlock, isLoading: blockLoading } = useQuery<ActiveBlock>({
     queryKey: ['active-block'],
@@ -63,6 +80,15 @@ export function SessionSummaryPage() {
       return res.data.data;
     },
     enabled: !!activeBlock,
+  });
+
+  const { data: trialData, isLoading: trialsLoading } = useQuery<TrialEntry[]>({
+    queryKey: ['trials', showTrialLogModal?.studentId, showTrialLogModal?.goalId],
+    queryFn: async () => {
+      const res = await api.get(`/trials/student/${showTrialLogModal!.studentId}?goalId=${showTrialLogModal!.goalId}`);
+      return res.data.data;
+    },
+    enabled: !!showTrialLogModal,
   });
 
   const submitMutation = useMutation({
@@ -200,14 +226,14 @@ export function SessionSummaryPage() {
                       {Object.keys(goalData.promptBreakdown).length > 0 && (
                         <div className="mt-2 flex gap-2">
                           {Object.entries(goalData.promptBreakdown).map(([level, count]) => (
-                            <span key={level} className="inline-flex rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">
+                            <span key={level} className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', promptColors[level] || 'bg-gray-200 text-gray-700')}>
                               {level}: {count}
                             </span>
                           ))}
                         </div>
                       )}
                       <button
-                        onClick={() => setShowTrialLog(showTrialLog === `${studentKey}-${gIdx}` ? null : `${studentKey}-${gIdx}`)}
+                        onClick={() => setShowTrialLogModal({ studentId: assignment.student.id, goalId: goalData.goal.id, goalName: goalData.goal.name })}
                         className="mt-2 flex items-center gap-1 text-xs text-primary-600 hover:text-primary-800"
                       >
                         <Eye className="h-3 w-3" /> View Trial Log
@@ -227,15 +253,30 @@ export function SessionSummaryPage() {
             <AlertTriangle className="h-4 w-4 text-amber-500" /> Behavior Incidents ({summary.incidents.length})
           </h3>
           <div className="space-y-2">
-            {summary.incidents.map(incident => (
-              <div key={incident.id} className="flex items-center justify-between rounded-md bg-amber-50 px-3 py-2 text-sm">
-                <div>
-                  <span className="font-medium text-gray-900">{incident.behaviorName}</span>
-                  <span className="ml-2 text-xs text-gray-500">({incident.category})</span>
+            {summary.incidents.map(incident => {
+              const isExpanded = expandedIncident === incident.id;
+              return (
+                <div key={incident.id} className="rounded-md bg-amber-50 overflow-hidden">
+                  <button
+                    onClick={() => setExpandedIncident(isExpanded ? null : incident.id)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900">{incident.behaviorName}</span>
+                      <span className="text-xs text-gray-500">({incident.category})</span>
+                      <span className="text-xs text-gray-500">x{incident.frequency} — {incident.intensity}</span>
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 text-gray-400 transition-transform', isExpanded && 'rotate-180')} />
+                  </button>
+                  {isExpanded && (
+                    <div className="border-t border-amber-100 px-3 py-2 text-xs text-gray-600 space-y-1 bg-amber-100/30">
+                      <p><span className="font-medium text-gray-700">Antecedent:</span> {incident.antecedent || 'None recorded'}</p>
+                      <p><span className="font-medium text-gray-700">Consequence:</span> {incident.consequence || 'None recorded'}</p>
+                    </div>
+                  )}
                 </div>
-                <span className="text-xs text-gray-500">x{incident.frequency} — {incident.intensity}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -250,6 +291,112 @@ export function SessionSummaryPage() {
           className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         />
       </div>
+
+      {showTrialLogModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-lg rounded-lg bg-white shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-medium text-gray-900 flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-primary-600" /> Trial Log
+                </h2>
+                <p className="text-sm text-gray-500">{showTrialLogModal.goalName}</p>
+              </div>
+              <button
+                onClick={() => { setShowTrialLogModal(null); setExpandedIncident(null); }}
+                className="rounded-md p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {trialsLoading ? (
+                <LoadingSpinner className="h-32" />
+              ) : trialData && trialData.length > 0 ? (
+                <div className="space-y-2">
+                  {trialData.map((trial, idx) => (
+                    <div key={trial.id} className="flex items-start gap-3 rounded-md border border-gray-200 p-3">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-500 shrink-0 mt-0.5">
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <Clock className="h-3 w-3" />
+                            {new Date(trial.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', promptColors[trial.promptLevel] || 'bg-gray-200 text-gray-700')}>
+                            {trial.promptLevel}
+                          </span>
+                          {trial.outcome === 'SUCCESS' ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                              <CheckCircle className="h-3 w-3" /> Success
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700">
+                              <X className="h-3 w-3" /> Failure
+                            </span>
+                          )}
+                        </div>
+                        {trial.notes && (
+                          <p className="mt-1 text-xs text-gray-500">{trial.notes}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-8">No trial entries found for this goal.</p>
+              )}
+
+              {summary?.incidents && summary.incidents.length > 0 && (
+                <div className="mt-6 border-t border-gray-200 pt-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" /> Behavior Incidents
+                  </h4>
+                  <div className="space-y-2">
+                    {summary.incidents.map(incident => {
+                      const isExpanded = expandedIncident === incident.id;
+                      return (
+                        <div key={incident.id} className="rounded-md bg-amber-50 overflow-hidden">
+                          <button
+                            onClick={() => setExpandedIncident(isExpanded ? null : incident.id)}
+                            className="flex w-full items-center justify-between px-3 py-2 text-sm"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900">{incident.behaviorName}</span>
+                              <span className="text-xs text-gray-500">x{incident.frequency}</span>
+                            </div>
+                            <ChevronDown className={cn('h-4 w-4 text-gray-400 transition-transform', isExpanded && 'rotate-180')} />
+                          </button>
+                          {isExpanded && (
+                            <div className="border-t border-amber-100 px-3 py-2 text-xs text-gray-600 space-y-1 bg-amber-100/30">
+                              <p><span className="font-medium text-gray-700">Category:</span> {incident.category}</p>
+                              <p><span className="font-medium text-gray-700">Intensity:</span> {incident.intensity}</p>
+                              <p><span className="font-medium text-gray-700">Antecedent:</span> {incident.antecedent || 'None recorded'}</p>
+                              <p><span className="font-medium text-gray-700">Consequence:</span> {incident.consequence || 'None recorded'}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 px-6 py-3">
+              <button
+                onClick={() => { setShowTrialLogModal(null); setExpandedIncident(null); }}
+                className="w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

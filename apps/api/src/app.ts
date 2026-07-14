@@ -19,6 +19,9 @@ import { messageRoutes } from './routes/messages';
 import { behaviorIncidentRoutes } from './routes/behavior-incidents';
 import { domainRoutes } from './routes/domains';
 import { scheduleRoutes } from './routes/schedules';
+import { uploadRoutes } from './routes/uploads';
+import { enrollmentRoutes } from './routes/enrollments';
+import { auditLogRoutes } from './routes/audit-log';
 
 const app = express();
 
@@ -81,6 +84,9 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/behavior-incidents', behaviorIncidentRoutes);
 app.use('/api/domains', domainRoutes);
 app.use('/api/schedules', scheduleRoutes);
+app.use('/api/uploads', uploadRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/audit-log', auditLogRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 

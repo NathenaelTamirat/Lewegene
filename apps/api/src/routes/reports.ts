@@ -56,4 +56,22 @@ router.get('/bi-annual/:studentId', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/filtered', async (req: Request, res: Response) => {
+  try {
+    const { studentId, teacherId, station, startDate, endDate, page, limit } = req.query;
+    const result = await ReportService.getFilteredReports({
+      studentId: studentId as string | undefined,
+      teacherId: teacherId as string | undefined,
+      station: station as string | undefined,
+      startDate: startDate as string | undefined,
+      endDate: endDate as string | undefined,
+      page: page ? parseInt(page as string, 10) : undefined,
+      limit: limit ? parseInt(limit as string, 10) : undefined,
+    });
+    res.json({ success: true, ...result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
+  }
+});
+
 export { router as reportRoutes };

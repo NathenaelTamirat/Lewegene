@@ -20,6 +20,7 @@ import { SessionSummaryPage } from './pages/SessionSummaryPage';
 import { ParentPortalPage } from './pages/ParentPortalPage';
 import { ChartsPage } from './pages/ChartsPage';
 import { MasteryCheckPage } from './pages/MasteryCheckPage';
+import { OperationalManagementPage } from './pages/OperationalManagementPage';
 import { Layout } from './components/Layout';
 import { LoadingSpinner } from './components/LoadingSpinner';
 
@@ -158,6 +159,14 @@ function App() {
         element={
           <ProtectedRoute>
             <SchedulingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/scheduling/operations"
+        element={
+          <ProtectedRoute>
+            <OperationalManagementPage />
           </ProtectedRoute>
         }
       />

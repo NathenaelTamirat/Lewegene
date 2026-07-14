@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../lib/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { ReportExport } from '../components/ReportExport';
 import { BarChart3, FileText, Users, TrendingUp, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -54,9 +55,17 @@ export function ReportsPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <BarChart3 className="h-6 w-6 text-gray-400" />
-        <h1 className="text-2xl font-semibold text-gray-900">Reports & Oversight</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <BarChart3 className="h-6 w-6 text-gray-400" />
+          <h1 className="text-2xl font-semibold text-gray-900">Reports & Oversight</h1>
+        </div>
+        <ReportExport
+          activeTab={activeTab}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          studentFilter={studentFilter}
+        />
       </div>
 
       <div className="border-b border-gray-200 mb-6">
