@@ -18,6 +18,7 @@ import { reportRoutes } from './routes/reports';
 import { messageRoutes } from './routes/messages';
 import { behaviorIncidentRoutes } from './routes/behavior-incidents';
 import { domainRoutes } from './routes/domains';
+import { scheduleRoutes } from './routes/schedules';
 
 const app = express();
 
@@ -79,6 +80,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/behavior-incidents', behaviorIncidentRoutes);
 app.use('/api/domains', domainRoutes);
+app.use('/api/schedules', scheduleRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 
