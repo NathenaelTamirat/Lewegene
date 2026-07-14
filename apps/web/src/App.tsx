@@ -16,6 +16,8 @@ import { AssessmentsPage } from './pages/AssessmentsPage';
 import { IupsPage } from './pages/IupsPage';
 import { EnrollmentPage } from './pages/EnrollmentPage';
 import { SchedulingPage } from './pages/SchedulingPage';
+import { SessionSummaryPage } from './pages/SessionSummaryPage';
+import { ParentPortalPage } from './pages/ParentPortalPage';
 import { Layout } from './components/Layout';
 import { LoadingSpinner } from './components/LoadingSpinner';
 
@@ -154,6 +156,22 @@ function App() {
         element={
           <ProtectedRoute>
             <SchedulingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sessions/summary"
+        element={
+          <ProtectedRoute>
+            <SessionSummaryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/parent"
+        element={
+          <ProtectedRoute>
+            <ParentPortalPage />
           </ProtectedRoute>
         }
       />

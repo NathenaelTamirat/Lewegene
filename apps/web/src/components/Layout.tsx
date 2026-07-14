@@ -13,6 +13,9 @@ import {
   LogOut,
   Menu,
   X,
+  ClipboardList,
+  Home,
+  Calendar,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../lib/utils';
@@ -20,10 +23,17 @@ import { cn } from '../lib/utils';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Students', href: '/students', icon: Users },
+  { name: 'Enrollment', href: '/enrollment', icon: Users },
   { name: 'Goals', href: '/goals', icon: Target },
   { name: 'Sessions', href: '/sessions', icon: Activity },
+  { name: 'Trial Log', href: '/sessions/log', icon: ClipboardList },
+  { name: 'Summary', href: '/sessions/summary', icon: ClipboardList },
+  { name: 'Assessments', href: '/assessments', icon: ClipboardList },
+  { name: 'IUPs', href: '/iups', icon: Target },
+  { name: 'Scheduling', href: '/scheduling', icon: Calendar },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
+  { name: 'Parent Portal', href: '/parent', icon: Home },
   { name: 'Staff', href: '/admin/users', icon: Shield },
   { name: 'Config', href: '/admin', icon: Settings },
 ];
