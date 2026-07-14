@@ -16,6 +16,7 @@ import { sessionRoutes } from './routes/sessions';
 import { configRoutes } from './routes/config';
 import { reportRoutes } from './routes/reports';
 import { messageRoutes } from './routes/messages';
+import { behaviorIncidentRoutes } from './routes/behavior-incidents';
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/behavior-incidents', behaviorIncidentRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 

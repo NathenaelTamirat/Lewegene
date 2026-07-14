@@ -6,11 +6,16 @@ import { StudentsPage } from './pages/StudentsPage';
 import { StudentProfilePage } from './pages/StudentProfilePage';
 import { GoalsPage } from './pages/GoalsPage';
 import { SessionsPage } from './pages/SessionsPage';
+import { TrialLoggingPage } from './pages/TrialLoggingPage';
 import { AdminPage } from './pages/AdminPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { UsersPage } from './pages/UsersPage';
 import { RolesPage } from './pages/RolesPage';
 import { MessagesPage } from './pages/MessagesPage';
+import { AssessmentsPage } from './pages/AssessmentsPage';
+import { IupsPage } from './pages/IupsPage';
+import { EnrollmentPage } from './pages/EnrollmentPage';
+import { SchedulingPage } from './pages/SchedulingPage';
 import { Layout } from './components/Layout';
 import { LoadingSpinner } from './components/LoadingSpinner';
 
@@ -73,6 +78,14 @@ function App() {
         }
       />
       <Route
+        path="/sessions/log"
+        element={
+          <ProtectedRoute>
+            <TrialLoggingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/reports"
         element={
           <ProtectedRoute>
@@ -109,6 +122,38 @@ function App() {
         element={
           <ProtectedRoute>
             <RolesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/assessments"
+        element={
+          <ProtectedRoute>
+            <AssessmentsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/iups"
+        element={
+          <ProtectedRoute>
+            <IupsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/enrollment"
+        element={
+          <ProtectedRoute>
+            <EnrollmentPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/scheduling"
+        element={
+          <ProtectedRoute>
+            <SchedulingPage />
           </ProtectedRoute>
         }
       />
