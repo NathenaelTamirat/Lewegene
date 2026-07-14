@@ -32,6 +32,7 @@ const navigation = [
   { name: 'IUPs', href: '/iups', icon: Target },
   { name: 'Scheduling', href: '/scheduling', icon: Calendar },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
+  { name: 'Charts', href: '/charts', icon: BarChart3 },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
   { name: 'Parent Portal', href: '/parent', icon: Home },
   { name: 'Staff', href: '/admin/users', icon: Shield },

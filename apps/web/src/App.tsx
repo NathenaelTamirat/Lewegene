@@ -18,6 +18,7 @@ import { EnrollmentPage } from './pages/EnrollmentPage';
 import { SchedulingPage } from './pages/SchedulingPage';
 import { SessionSummaryPage } from './pages/SessionSummaryPage';
 import { ParentPortalPage } from './pages/ParentPortalPage';
+import { ChartsPage } from './pages/ChartsPage';
 import { Layout } from './components/Layout';
 import { LoadingSpinner } from './components/LoadingSpinner';
 
@@ -172,6 +173,14 @@ function App() {
         element={
           <ProtectedRoute>
             <ParentPortalPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/charts"
+        element={
+          <ProtectedRoute>
+            <ChartsPage />
           </ProtectedRoute>
         }
       />
