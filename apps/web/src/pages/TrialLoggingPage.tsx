@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { cn } from '../lib/utils';
-import { Clock, AlertTriangle, CheckCircle, ArrowLeftRight, Send, FileText } from 'lucide-react';
+import { Clock, AlertTriangle, CheckCircle, ArrowLeftRight, Send, FileText, Layers } from 'lucide-react';
 
 interface SessionAssignment {
   id: string;
@@ -46,6 +46,14 @@ interface Trial {
   timestamp: string;
   goal: { goal: { name: string } };
   step: { name: string } | null;
+  stepIndex: number | null;
+}
+
+interface TaskAnalysisStep {
+  id: string;
+  name: string;
+  order: number;
+  masteryCriteria: number;
 }
 
 const defaultPrompts = [
@@ -62,6 +70,8 @@ export function TrialLoggingPage() {
   const [activeGoalIdx, setActiveGoalIdx] = useState(0);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [trialNotes, setTrialNotes] = useState('');
+  const [isTaskAnalysisMode, setIsTaskAnalysisMode] = useState(false);
+  const [activeStepIdx, setActiveStepIdx] = useState(0);
 
   const { data: activeBlock, isLoading: blockLoading } = useQuery<SessionBlock>({
     queryKey: ['active-block'],
@@ -88,6 +98,17 @@ export function TrialLoggingPage() {
 
   const activeGoal = goals?.[activeGoalIdx];
 
+  const isTaskAnalysisGoal = activeGoal?.goal.type === 'TASK_ANALYSIS';
+
+  const { data: taskSteps } = useQuery<TaskAnalysisStep[]>({
+    queryKey: ['task-steps', activeGoal?.goal.id],
+    queryFn: async () => {
+      const res = await api.get(`/goals/${activeGoal!.goal.id}/steps`);
+      return res.data.data || [];
+    },
+    enabled: !!activeGoal && isTaskAnalysisGoal,
+  });
+
   const { data: trials } = useQuery<Trial[]>({
     queryKey: ['trials', activeAssignment?.student.id, activeGoal?.id],
     queryFn: async () => {
@@ -98,7 +119,7 @@ export function TrialLoggingPage() {
   });
 
   const logTrialMutation = useMutation({
-    mutationFn: async (data: { studentId: string; goalId: string; promptLevel: string; outcome: string; notes?: string }) => {
+    mutationFn: async (data: { studentId: string; goalId: string; promptLevel: string; outcome: string; notes?: string; stepIndex?: number }) => {
       return api.post('/trials', data);
     },
     onSuccess: () => {
@@ -110,12 +131,27 @@ export function TrialLoggingPage() {
 
   const handleTrialLog = (outcome: 'SUCCESS' | 'FAILURE') => {
     if (!activeAssignment || !activeGoal) return;
+    const promptLevel = defaultPrompts[activeGoalIdx % defaultPrompts.length].label;
     logTrialMutation.mutate({
       studentId: activeAssignment.student.id,
       goalId: activeGoal.id,
-      promptLevel: defaultPrompts[activeGoalIdx % defaultPrompts.length].label,
+      promptLevel,
       outcome,
       notes: trialNotes || undefined,
+      stepIndex: isTaskAnalysisMode && taskSteps ? activeStepIdx : undefined,
+    });
+  };
+
+  const handleTaskStepLog = (outcome: 'SUCCESS' | 'FAILURE') => {
+    if (!activeAssignment || !activeGoal || !taskSteps) return;
+    const promptLevel = defaultPrompts[activeGoalIdx % defaultPrompts.length].label;
+    logTrialMutation.mutate({
+      studentId: activeAssignment.student.id,
+      goalId: activeGoal.id,
+      promptLevel,
+      outcome,
+      notes: trialNotes || undefined,
+      stepIndex: activeStepIdx,
     });
   };
 
@@ -184,7 +220,7 @@ export function TrialLoggingPage() {
               isActive
               goals={goals || []}
               activeGoalIdx={activeGoalIdx}
-              onGoalSelect={setActiveGoalIdx}
+              onGoalSelect={(idx) => { setActiveGoalIdx(idx); setActiveStepIdx(0); }}
               trials={trials || []}
               prompts={defaultPrompts}
               onTrialLog={handleTrialLog}
@@ -192,6 +228,12 @@ export function TrialLoggingPage() {
               onNotesChange={setTrialNotes}
               isLogging={logTrialMutation.isPending}
               onReportIncident={() => setShowIncidentModal(true)}
+              isTaskAnalysisMode={isTaskAnalysisMode}
+              onToggleTaskAnalysis={() => { setIsTaskAnalysisMode(!isTaskAnalysisMode); setActiveStepIdx(0); }}
+              taskSteps={taskSteps || []}
+              activeStepIdx={activeStepIdx}
+              onStepSelect={setActiveStepIdx}
+              onTaskStepLog={handleTaskStepLog}
             />
           )}
 
@@ -311,6 +353,12 @@ function StudentCard({
   onNotesChange,
   isLogging,
   onReportIncident,
+  isTaskAnalysisMode,
+  onToggleTaskAnalysis,
+  taskSteps,
+  activeStepIdx,
+  onStepSelect,
+  onTaskStepLog,
 }: {
   assignment: SessionAssignment;
   isActive: boolean;
@@ -324,7 +372,16 @@ function StudentCard({
   onNotesChange: (notes: string) => void;
   isLogging: boolean;
   onReportIncident: () => void;
+  isTaskAnalysisMode: boolean;
+  onToggleTaskAnalysis: () => void;
+  taskSteps: TaskAnalysisStep[];
+  activeStepIdx: number;
+  onStepSelect: (idx: number) => void;
+  onTaskStepLog: (outcome: 'SUCCESS' | 'FAILURE') => void;
 }) {
+  const activeGoal = goals[activeGoalIdx];
+  const isTaskAnalysis = activeGoal?.goal.type === 'TASK_ANALYSIS';
+
   return (
     <div className={cn(
       'rounded-lg shadow p-6',
@@ -377,6 +434,52 @@ function StudentCard({
 
       {isActive && (
         <div className="space-y-4">
+          {isTaskAnalysis && (
+            <div className="rounded-md bg-blue-50 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">Task Analysis Mode</span>
+                </div>
+                <button
+                  onClick={onToggleTaskAnalysis}
+                  className={cn(
+                    'rounded-md px-3 py-1 text-xs font-medium',
+                    isTaskAnalysisMode ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  )}
+                >
+                  {isTaskAnalysisMode ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              {isTaskAnalysisMode && taskSteps.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {taskSteps.map((step, idx) => {
+                    const stepTrials = trials.filter(t => t.stepIndex === idx);
+                    const stepSuccesses = stepTrials.filter(t => t.outcome === 'SUCCESS').length;
+                    const independence = stepTrials.length > 0 ? Math.round((stepSuccesses / stepTrials.length) * 100) : 0;
+
+                    return (
+                      <button
+                        key={step.id}
+                        onClick={() => onStepSelect(idx)}
+                        className={cn(
+                          'rounded-md border-2 px-3 py-2 text-left transition-colors',
+                          activeStepIdx === idx
+                            ? 'border-blue-500 bg-blue-50 text-blue-800'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                        )}
+                      >
+                        <span className="block text-xs font-medium">Step {idx + 1}</span>
+                        <span className="block text-xs truncate max-w-[120px]">{step.name}</span>
+                        <span className="block text-[10px] text-gray-400">{independence}% | {stepTrials.length} trials</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <p className="text-xs font-medium text-gray-500 mb-2">TRIAL STREAM</p>
             <div className="flex gap-1 overflow-x-auto pb-2">
@@ -404,7 +507,7 @@ function StudentCard({
               {prompts.map(p => (
                 <button
                   key={p.label}
-                  onClick={() => onTrialLog('SUCCESS')}
+                  onClick={() => isTaskAnalysisMode ? onTaskStepLog('SUCCESS') : onTrialLog('SUCCESS')}
                   disabled={isLogging}
                   className="flex h-11 w-11 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
                   style={{ backgroundColor: p.color }}
@@ -418,7 +521,7 @@ function StudentCard({
 
           <div className="flex gap-2">
             <button
-              onClick={() => onTrialLog('SUCCESS')}
+              onClick={() => isTaskAnalysisMode ? onTaskStepLog('SUCCESS') : onTrialLog('SUCCESS')}
               disabled={isLogging}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 active:scale-[0.98]"
             >
@@ -426,7 +529,7 @@ function StudentCard({
               Success
             </button>
             <button
-              onClick={() => onTrialLog('FAILURE')}
+              onClick={() => isTaskAnalysisMode ? onTaskStepLog('FAILURE') : onTrialLog('FAILURE')}
               disabled={isLogging}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 active:scale-[0.98]"
             >
