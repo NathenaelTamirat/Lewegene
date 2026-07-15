@@ -57,7 +57,7 @@ export function Layout({ children }: { children: ReactNode }) {
         />
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4">
-            <span className="text-xl font-bold text-primary-600">Melue</span>
+            <span className="text-xl font-bold text-primary-600">Lewegene</span>
             <button onClick={() => setSidebarOpen(false)}>
               <X className="h-6 w-6" />
             </button>
@@ -91,7 +91,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white">
           <div className="flex h-16 flex-shrink-0 items-center px-4">
-            <span className="text-xl font-bold text-primary-600">Melue Foundation</span>
+            <span className="text-xl font-bold text-primary-600">Lewegene Foundation</span>
           </div>
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => {

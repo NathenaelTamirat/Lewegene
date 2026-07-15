@@ -81,7 +81,7 @@ export function ChartsPage() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#1f2937';
     ctx.font = 'bold 16px system-ui';
-    ctx.fillText(`Melue - ${chartTypes.find(c => c.id === chartType)?.label || 'Chart'}`, 20, 30);
+    ctx.fillText(`Lewegene - ${chartTypes.find(c => c.id === chartType)?.label || 'Chart'}`, 20, 30);
 
     if (progress) {
       ctx.font = '12px system-ui';
@@ -98,7 +98,7 @@ export function ChartsPage() {
     }
 
     const link = document.createElement('a');
-    link.download = `melue-${chartType}-chart.png`;
+    link.download = `lewegene-${chartType}-chart.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   };

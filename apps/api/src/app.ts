@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 import { authRoutes } from './routes/auth';
 import { userRoutes } from './routes/users';
@@ -28,9 +30,19 @@ const app = express();
 
 // ─── Security Middleware ────────────────────────────────────────────────────
 
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:3000')
+  .split(',')
+  .map(o => o.trim());
+
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 
@@ -65,7 +77,8 @@ app.use(compression());
 // ─── Health Check ───────────────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf-8'));
+  res.json({ status: 'ok', version: pkg.version, timestamp: new Date().toISOString() });
 });
 
 // ─── API Routes ─────────────────────────────────────────────────────────────

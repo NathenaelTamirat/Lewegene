@@ -130,7 +130,7 @@ async function main() {
   console.log(`✅ Created ${domains.length} goal domains`);
 
   // Create default system configs
-  const configs: Array<{ key: string; value: unknown; category: string }> = [
+  const configs: Array<{ key: string; value: any; category: string }> = [
     {
       key: 'session.morning_start',
       value: '08:00',

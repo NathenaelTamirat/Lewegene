@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -22,17 +22,126 @@ import { ChartsPage } from './pages/ChartsPage';
 import { MasteryCheckPage } from './pages/MasteryCheckPage';
 import { OperationalManagementPage } from './pages/OperationalManagementPage';
 import { Layout } from './components/Layout';
-import { LoadingSpinner } from './components/LoadingSpinner';
+import { NotFoundPage, AccessDeniedPage, FullPageLoadingSpinner } from './components/AppStates';
+
+const ROLE_ROUTES: Record<string, string[]> = {
+  'Teacher': [
+    '/',
+    '/sessions',
+    '/sessions/log',
+    '/sessions/summary',
+    '/students',
+    '/students/:id',
+    '/goals',
+    '/mastery',
+    '/reports',
+    '/messages',
+    '/charts',
+  ],
+  'Therapy Coordinator': [
+    '/',
+    '/scheduling',
+    '/scheduling/operations',
+    '/sessions',
+    '/sessions/log',
+    '/sessions/summary',
+    '/students',
+    '/students/:id',
+    '/goals',
+    '/mastery',
+    '/reports',
+    '/messages',
+    '/charts',
+    '/assessments',
+    '/iups',
+  ],
+  'Program Director': [
+    '/',
+    '/iups',
+    '/goals',
+    '/students',
+    '/students/:id',
+    '/assessments',
+    '/reports',
+    '/charts',
+    '/messages',
+    '/sessions',
+    '/mastery',
+  ],
+  'System Administrator': [
+    '/',
+    '/admin',
+    '/admin/users',
+    '/admin/roles',
+    '/users',
+    '/reports',
+    '/messages',
+  ],
+  'Institutional Administrator': [
+    '/',
+    '/admin',
+    '/admin/users',
+    '/admin/roles',
+    '/users',
+    '/reports',
+    '/messages',
+  ],
+  'Director': [
+    '/',
+    '/reports',
+    '/charts',
+    '/students',
+    '/students/:id',
+    '/iups',
+    '/goals',
+    '/sessions',
+    '/messages',
+    '/mastery',
+    '/assessments',
+    '/scheduling',
+    '/scheduling/operations',
+    '/enrollment',
+  ],
+  'Parent': [
+    '/',
+    '/parent',
+  ],
+};
+
+function hasRouteAccess(pathname: string, userRoles: string[]): boolean {
+  for (const role of userRoles) {
+    const allowedRoutes = ROLE_ROUTES[role];
+    if (!allowedRoutes) continue;
+
+    for (const route of allowedRoutes) {
+      if (route === pathname) return true;
+
+      if (route.includes(':id')) {
+        const routePattern = route.replace(':id', '[^/]+');
+        const regex = new RegExp(`^${routePattern}$`);
+        if (regex.test(pathname)) return true;
+      }
+
+      if (pathname.startsWith(route + '/')) return true;
+    }
+  }
+  return false;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
-    return <LoadingSpinner />;
+    return <FullPageLoadingSpinner />;
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!hasRouteAccess(location.pathname, user.roles)) {
+    return <AccessDeniedPage />;
   }
 
   return <Layout>{children}</Layout>;
@@ -202,7 +311,7 @@ function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

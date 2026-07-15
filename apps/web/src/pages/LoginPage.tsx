@@ -9,14 +9,14 @@ import type { z } from 'zod';
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-const ROLE_ROUTE_MAP: Record<string, string> = {
-  Teacher: '/sessions',
+const ROLE_DEFAULTS: Record<string, string> = {
+  'Teacher': '/sessions',
   'Therapy Coordinator': '/scheduling',
   'Program Director': '/iups',
-  Director: '/reports',
+  'Director': '/reports',
   'System Administrator': '/admin',
   'Institutional Administrator': '/admin',
-  Parent: '/parent',
+  'Parent': '/parent',
 };
 
 const ROLE_PRIORITY = [
@@ -36,7 +36,7 @@ function getPostLoginRoute(roles: string[]): string {
     return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
   });
   for (const role of sorted) {
-    const route = ROLE_ROUTE_MAP[role];
+    const route = ROLE_DEFAULTS[role];
     if (route) return route;
   }
   return '/';
@@ -72,7 +72,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         <div>
-          <h1 className="text-center text-3xl font-bold text-primary-600">Melue Foundation</h1>
+          <h1 className="text-center text-3xl font-bold text-primary-600">Lewegene Foundation</h1>
           <h2 className="mt-2 text-center text-sm text-gray-600">Sign In to Your Account</h2>
         </div>
 
