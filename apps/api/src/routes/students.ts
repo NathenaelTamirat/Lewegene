@@ -72,7 +72,7 @@ router.get('/:id/progress', async (req: Request, res: Response) => {
       return;
     }
 
-    const goals = student.goalAssignments.map((ga) => ({
+    const goals = student.goalAssignments.map((ga: any) => ({
       name: ga.goal.name,
       domain: (ga.goal as any).domain?.name || '',
       progress: ga.progress,
@@ -112,7 +112,7 @@ router.get('/:id/observations', async (req: Request, res: Response) => {
       orderBy: { timestamp: 'desc' },
     });
 
-    const result = observations.map((obs) => ({
+    const result = observations.map((obs: any) => ({
       id: obs.id,
       date: obs.timestamp.toISOString(),
       behavior: obs.observation,

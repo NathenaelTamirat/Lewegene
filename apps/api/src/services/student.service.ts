@@ -51,7 +51,7 @@ export class StudentService {
     ]);
 
     // Calculate age
-    const studentsWithAge = students.map((s) => {
+    const studentsWithAge = students.map((s: any) => {
       const age = Math.floor(
         (Date.now() - new Date(s.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
       );

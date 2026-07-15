@@ -25,9 +25,9 @@ export class MasteryCheckService {
     });
 
     const eligible = assignments
-      .map((a) => {
+      .map((a: any) => {
         const totalTrials = a.trials.length;
-        const successes = a.trials.filter((t) => t.outcome === 'SUCCESS').length;
+        const successes = a.trials.filter((t: any) => t.outcome === 'SUCCESS').length;
         const independence = totalTrials > 0 ? Math.round((successes / totalTrials) * 100) : 0;
 
         const criteria = (a.goal.masteryCriteria as any) || {};
@@ -72,9 +72,9 @@ export class MasteryCheckService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return checks.map((c) => {
+    return checks.map((c: any) => {
       const totalTrials = c.goalAssignment.trials.length;
-      const successes = c.goalAssignment.trials.filter((t) => t.outcome === 'SUCCESS').length;
+      const successes = c.goalAssignment.trials.filter((t: any) => t.outcome === 'SUCCESS').length;
       const independence = totalTrials > 0 ? Math.round((successes / totalTrials) * 100) : 0;
 
       const teacherAData = c.teacherASummary as any;

@@ -19,12 +19,12 @@ export class RoleService {
       orderBy: { name: 'asc' },
     });
 
-    return roles.map((role) => ({
+    return roles.map((role: any) => ({
       ...role,
       userCount: role._count.users,
       permissions: role.permissions
-        .filter((rp) => rp.allowed)
-        .map((rp) => `${rp.permission.module}:${rp.permission.action}`),
+        .filter((rp: any) => rp.allowed)
+        .map((rp: any) => `${rp.permission.module}:${rp.permission.action}`),
       _count: undefined,
     }));
   }
@@ -53,7 +53,7 @@ export class RoleService {
     return {
       ...role,
       userCount: role._count.users,
-      permissions: role.permissions.map((rp) => ({
+      permissions: role.permissions.map((rp: any) => ({
         module: rp.permission.module,
         action: rp.permission.action,
         allowed: rp.allowed,
@@ -97,8 +97,8 @@ export class RoleService {
     return {
       ...role,
       permissions: role.permissions
-        .filter((rp) => rp.allowed)
-        .map((rp) => `${rp.permission.module}:${rp.permission.action}`),
+        .filter((rp: any) => rp.allowed)
+        .map((rp: any) => `${rp.permission.module}:${rp.permission.action}`),
     };
   }
 

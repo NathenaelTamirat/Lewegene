@@ -9,6 +9,39 @@ import type { z } from 'zod';
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+const ROLE_ROUTE_MAP: Record<string, string> = {
+  Teacher: '/sessions',
+  'Therapy Coordinator': '/scheduling',
+  'Program Director': '/iups',
+  Director: '/reports',
+  'System Administrator': '/admin',
+  'Institutional Administrator': '/admin',
+  Parent: '/parent',
+};
+
+const ROLE_PRIORITY = [
+  'Director',
+  'Program Director',
+  'Therapy Coordinator',
+  'Teacher',
+  'System Administrator',
+  'Institutional Administrator',
+  'Parent',
+];
+
+function getPostLoginRoute(roles: string[]): string {
+  const sorted = [...roles].sort((a, b) => {
+    const ai = ROLE_PRIORITY.indexOf(a);
+    const bi = ROLE_PRIORITY.indexOf(b);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
+  for (const role of sorted) {
+    const route = ROLE_ROUTE_MAP[role];
+    if (route) return route;
+  }
+  return '/';
+}
+
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -27,7 +60,9 @@ export function LoginPage() {
     try {
       setError(null);
       await login(data.email, data.password);
-      navigate('/');
+      const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const roles: string[] = savedUser.roles || [];
+      navigate(getPostLoginRoute(roles), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     }

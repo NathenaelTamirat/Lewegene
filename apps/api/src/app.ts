@@ -22,6 +22,7 @@ import { scheduleRoutes } from './routes/schedules';
 import { uploadRoutes } from './routes/uploads';
 import { enrollmentRoutes } from './routes/enrollments';
 import { auditLogRoutes } from './routes/audit-log';
+import { directorNoteRoutes } from './routes/director-notes';
 
 const app = express();
 
@@ -87,6 +88,7 @@ app.use('/api/schedules', scheduleRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/audit-log', auditLogRoutes);
+app.use('/api/director-notes', directorNoteRoutes);
 
 // ─── 404 Handler ────────────────────────────────────────────────────────────
 

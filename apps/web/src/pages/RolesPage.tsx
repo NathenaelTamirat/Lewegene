@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { Shield, Plus, Edit2, Trash2, X, Save, Check } from 'lucide-react';
+import { Shield, Plus, Edit2, Trash2, X, Save, Check, RotateCcw, Copy } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface Role {
@@ -84,6 +84,7 @@ export function RolesPage() {
           currentPermissions={roles?.find(r => r.id === showPerms)?.permissions || []}
           onClose={() => setShowPerms(null)}
           onSuccess={() => { setShowPerms(null); queryClient.invalidateQueries({ queryKey: ['roles'] }); }}
+          roles={roles}
         />
       )}
 
@@ -199,10 +200,11 @@ function RoleForm({ role, allPermissions, onClose, onSuccess }: { role: Role | n
   );
 }
 
-function PermissionEditor({ roleId, allPermissions, currentPermissions, onClose, onSuccess }: {
-  roleId: string; allPermissions: Permission[]; currentPermissions: string[]; onClose: () => void; onSuccess: () => void;
+function PermissionEditor({ roleId, allPermissions, currentPermissions, onClose, onSuccess, roles }: {
+  roleId: string; allPermissions: Permission[]; currentPermissions: string[]; onClose: () => void; onSuccess: () => void; roles?: Role[];
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(currentPermissions));
+  const [copySource, setCopySource] = useState<string>('');
 
   const updateMutation = useMutation({
     mutationFn: async (permissionIds: string[]) => {
@@ -224,12 +226,52 @@ function PermissionEditor({ roleId, allPermissions, currentPermissions, onClose,
     setSelected(next);
   };
 
+  const handleResetToDefault = () => {
+    setSelected(new Set<string>());
+  };
+
+  const handleCopyFromRole = () => {
+    if (!copySource) return;
+    const sourceRole = roles?.find(r => r.id === copySource);
+    if (sourceRole) {
+      setSelected(new Set(sourceRole.permissions));
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium text-gray-900">Edit Permissions</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="flex items-center gap-3 mb-4">
+          <button
+            onClick={handleResetToDefault}
+            className="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <RotateCcw className="h-4 w-4" /> Reset to Default
+          </button>
+          <div className="flex items-center gap-2">
+            <Copy className="h-4 w-4 text-gray-400" />
+            <select
+              value={copySource}
+              onChange={e => setCopySource(e.target.value)}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              <option value="">Copy from Role...</option>
+              {roles?.filter(r => r.id !== roleId).map(r => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleCopyFromRole}
+              disabled={!copySource}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Apply
+            </button>
+          </div>
         </div>
         <div className="space-y-4">
           {Object.entries(grouped).map(([module, perms]) => (

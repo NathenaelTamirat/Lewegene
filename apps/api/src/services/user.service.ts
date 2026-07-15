@@ -49,9 +49,9 @@ export class UserService {
     ]);
 
     return {
-      data: users.map((u) => ({
+      data: users.map((u: any) => ({
         ...u,
-        roles: u.roles.map((ur) => ur.role),
+        roles: u.roles.map((ur: any) => ur.role),
       })),
       pagination: {
         page,
@@ -106,7 +106,7 @@ export class UserService {
 
     // Flatten permissions
     const permissions = new Set<string>();
-    const roles = user.roles.map((ur) => {
+    const roles = user.roles.map((ur: any) => {
       for (const rp of ur.role.permissions) {
         if (rp.allowed) {
           permissions.add(`${rp.permission.module}:${rp.permission.action}`);

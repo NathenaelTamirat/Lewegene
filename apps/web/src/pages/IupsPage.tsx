@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../lib/api';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { AssessmentPipeline } from '../components/AssessmentPipeline';
+import { AssessmentVisualDashboard } from '../components/AssessmentVisualDashboard';
 import { cn } from '../lib/utils';
-import { FileText, Plus, CheckCircle, Archive, Eye, Edit2, Columns } from 'lucide-react';
+import { FileText, Plus, CheckCircle, Archive, Eye, Columns, ChevronDown, ChevronRight, BarChart3 } from 'lucide-react';
 
 interface IUP {
   id: string;
@@ -20,6 +21,16 @@ interface IUP {
     goal: { name: string; type: string };
   }>;
   _count: { goalAssignments: number };
+}
+
+interface Assessment {
+  id: string;
+  type: string;
+  status: string;
+  data: Record<string, unknown>;
+  createdAt: string;
+  completedAt: string | null;
+  reviewedAt: string | null;
 }
 
 interface Student {
@@ -49,6 +60,7 @@ export function IupsPage() {
   const [selectedIup, setSelectedIup] = useState<IUP | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
   const [newStudentId, setNewStudentId] = useState('');
+  const [showDashboard, setShowDashboard] = useState(true);
 
   const { data: students } = useQuery<Student[]>({
     queryKey: ['students-list'],
@@ -85,7 +97,85 @@ export function IupsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['iups'] }),
   });
 
+  const { data: studentAssessments } = useQuery<Assessment[]>({
+    queryKey: ['assessments', selectedIup?.student.id],
+    queryFn: async () => {
+      const res = await api.get(`/assessments/student/${selectedIup!.student.id}`);
+      return res.data.data;
+    },
+    enabled: !!selectedIup,
+  });
+
   const filtered = iups?.filter(i => !filter || i.status === filter) || [];
+
+  const assessmentData = (() => {
+    if (!studentAssessments) return null;
+
+    const skills: Record<string, { red: number; yellow: number; green: number; total: number }> = {};
+    const behaviorFunctions = { sensory: 0, escape: 0, attention: 0, tangible: 0 };
+    const preferences: Array<{ name: string; duration: number; frequency: number; score: number }> = [];
+
+    for (const assessment of studentAssessments) {
+      const data = assessment.data as Record<string, unknown>;
+
+      if (assessment.type === 'SKILLS_ABLLS' && data.domains) {
+        const domains = data.domains as Record<string, Array<{ name: string; score: number }>>;
+        for (const [domain, items] of Object.entries(domains)) {
+          if (!Array.isArray(items)) continue;
+          const red = items.filter(i => i.score === 0).length;
+          const yellow = items.filter(i => i.score === 1).length;
+          const green = items.filter(i => i.score === 2).length;
+          skills[domain] = {
+            red,
+            yellow,
+            green,
+            total: items.length,
+          };
+        }
+      }
+
+      if (assessment.type === 'BEHAVIOR_MASS' || assessment.type === 'BEHAVIOR_FAST') {
+        const funcs = data.functions as Record<string, number> | undefined;
+        if (funcs) {
+          behaviorFunctions.sensory += funcs.sensory || 0;
+          behaviorFunctions.escape += funcs.escape || 0;
+          behaviorFunctions.attention += funcs.attention || 0;
+          behaviorFunctions.tangible += funcs.tangible || 0;
+        }
+        const functionData = data.behaviorFunctions as Record<string, number> | undefined;
+        if (functionData) {
+          behaviorFunctions.sensory += functionData.sensory || 0;
+          behaviorFunctions.escape += functionData.escape || 0;
+          behaviorFunctions.attention += functionData.attention || 0;
+          behaviorFunctions.tangible += functionData.tangible || 0;
+        }
+      }
+
+      if (assessment.type === 'PREFERENCE') {
+        const items = (data.items || data.preferences) as Array<{
+          name: string;
+          duration?: number;
+          frequency?: number;
+          score?: number;
+          durationMinutes?: number;
+          frequencyCount?: number;
+          weightedScore?: number;
+        }> | undefined;
+        if (Array.isArray(items)) {
+          for (const item of items) {
+            preferences.push({
+              name: item.name,
+              duration: item.duration || item.durationMinutes || 0,
+              frequency: item.frequency || item.frequencyCount || 0,
+              score: item.score || item.weightedScore || 0,
+            });
+          }
+        }
+      }
+    }
+
+    return { skills, behaviorFunctions, preferences };
+  })();
 
   return (
     <div>
@@ -262,6 +352,28 @@ export function IupsPage() {
                 </div>
               ))}
             </div>
+
+            {assessmentData && (
+              <div className="mt-4">
+                <button
+                  onClick={() => setShowDashboard(!showDashboard)}
+                  className="flex w-full items-center gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 text-left mb-2"
+                >
+                  <BarChart3 className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700 flex-1">Assessment Visual Dashboard</span>
+                  {showDashboard ? (
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  )}
+                </button>
+                {showDashboard && (
+                  <div className="mt-2">
+                    <AssessmentVisualDashboard assessmentData={assessmentData} />
+                  </div>
+                )}
+              </div>
+            )}
             <div className="mt-6 flex gap-2">
               {selectedIup.status === 'DRAFT' && (
                 <button

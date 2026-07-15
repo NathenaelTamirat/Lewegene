@@ -82,8 +82,8 @@ export class ReportService {
     }
 
     // Calculate overall progress
-    const activeGoals = student.goalAssignments.filter((g) => g.status !== 'MASTERED');
-    const masteredGoals = student.goalAssignments.filter((g) => g.status === 'MASTERED');
+    const activeGoals = student.goalAssignments.filter((g: any) => g.status !== 'MASTERED');
+    const masteredGoals = student.goalAssignments.filter((g: any) => g.status === 'MASTERED');
     const overallProgress =
       student.goalAssignments.length > 0
         ? masteredGoals.length / student.goalAssignments.length
@@ -102,8 +102,8 @@ export class ReportService {
         mastered: masteredGoals.length,
         overallProgress: Math.round(overallProgress * 100),
         byStation: {
-          STATION_1: student.goalAssignments.filter((g) => g.station === 'STATION_1'),
-          STATION_2: student.goalAssignments.filter((g) => g.station === 'STATION_2'),
+          STATION_1: student.goalAssignments.filter((g: any) => g.station === 'STATION_1'),
+          STATION_2: student.goalAssignments.filter((g: any) => g.station === 'STATION_2'),
         },
       },
       recentAssessments: student.assessments,
@@ -180,6 +180,11 @@ export class ReportService {
         gte: new Date(start),
         lte: new Date(end),
       };
+    } else if (!start && !end) {
+      // Default to last 6 months
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      where.timestamp = { gte: sixMonthsAgo };
     }
 
     const incidents = await prisma.behaviorIncident.findMany({
@@ -187,17 +192,37 @@ export class ReportService {
       select: {
         timestamp: true,
         category: true,
+        behaviorName: true,
       },
       orderBy: { timestamp: 'asc' },
     });
 
-    const trends = incidents.map((i) => ({
-      date: i.timestamp.toISOString().split('T')[0],
-      count: 1,
-      category: i.category || 'OTHER',
-    }));
+    // Group by month and category
+    const grouped: Record<string, Record<string, number>> = {};
 
-    return trends;
+    for (const incident of incidents) {
+      const monthKey = `${incident.timestamp.getFullYear()}-${String(incident.timestamp.getMonth() + 1).padStart(2, '0')}`;
+      const category = incident.category || 'OTHER';
+
+      if (!grouped[monthKey]) {
+        grouped[monthKey] = {};
+      }
+      grouped[monthKey][category] = (grouped[monthKey][category] || 0) + 1;
+    }
+
+    // Convert to sorted array format
+    const trends = Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, categories]) => ({
+        month,
+        categories: Object.entries(categories).map(([category, count]) => ({
+          category,
+          count,
+        })),
+        total: Object.values(categories).reduce((sum, c) => sum + c, 0),
+      }));
+
+    return { trends, totalIncidents: incidents.length };
   }
 
   static async getFilteredReports(filters: {
@@ -253,6 +278,117 @@ export class ReportService {
     };
   }
 
+  static async getTeacherPerformance(teacherId?: string) {
+    const where = teacherId
+      ? { teacherId }
+      : {};
+
+    // Sessions completed per teacher
+    const sessions = await prisma.sessionSummary.groupBy({
+      by: ['teacherId'],
+      where: {
+        ...where,
+        status: { in: ['SUBMITTED', 'REVIEWED'] },
+      },
+      _count: { id: true },
+      _avg: { totalTrials: true },
+    });
+
+    // Reviewed sessions per teacher
+    const reviewedSessions = await prisma.sessionSummary.groupBy({
+      by: ['teacherId'],
+      where: {
+        ...where,
+        status: 'REVIEWED',
+      },
+      _count: { id: true },
+    });
+
+    const reviewedMap = new Map<string, number>(reviewedSessions.map((r: any) => [r.teacherId, r._count.id]));
+
+    // Incidents per teacher
+    const incidents = await prisma.behaviorIncident.groupBy({
+      by: ['teacherId'],
+      where,
+      _count: { id: true },
+    });
+
+    const incidentMap = new Map<string, number>(incidents.map((i: any) => [i.teacherId, i._count.id]));
+
+    // Independence outcomes from trials (SUCCESS = independent)
+    const allTeacherIds = sessions.map((s: any) => s.teacherId);
+
+    let independenceData: Array<{ teacherId: string; totalTrials: number; successRate: number }> = [];
+    if (allTeacherIds.length > 0) {
+      const trialResults = await prisma.trial.groupBy({
+        by: ['teacherId'],
+        where: {
+          teacherId: { in: allTeacherIds },
+        },
+        _count: { id: true },
+      });
+
+      const successCounts = await prisma.trial.groupBy({
+        by: ['teacherId'],
+        where: {
+          teacherId: { in: allTeacherIds },
+          outcome: 'SUCCESS',
+        },
+        _count: { id: true },
+      });
+
+      const successMap = new Map<string, number>(successCounts.map((s: any) => [s.teacherId, s._count.id]));
+
+      independenceData = trialResults.map((t: any) => ({
+        teacherId: t.teacherId,
+        totalTrials: t._count.id,
+        successRate: t._count.id > 0 ? ((successMap.get(t.teacherId) || 0) / t._count.id) * 100 : 0,
+      }));
+    }
+
+    const independenceMap = new Map(
+      independenceData.map(d => [d.teacherId, d.totalTrials > 0 ? Math.round(d.successRate * 10) / 10 : 0])
+    );
+
+    // Fetch teacher names
+    const teachers = await prisma.user.findMany({
+      where: { id: { in: allTeacherIds.length > 0 ? allTeacherIds : ['__none__'] } },
+      select: { id: true, firstName: true, lastName: true, avatar: true },
+    });
+
+    const teacherMap = new Map<string, any>(teachers.map((t: any) => [t.id, t]));
+
+    return sessions.map((s: any) => {
+      const totalSessions = s._count.id;
+      const reviewedCount = reviewedMap.get(s.teacherId) || 0;
+      const incidentCount = incidentMap.get(s.teacherId) || 0;
+      const independence = independenceMap.get(s.teacherId) || 0;
+      const teacher = teacherMap.get(s.teacherId);
+
+      const metrics = {
+        teacherId: s.teacherId,
+        teacherName: teacher ? `${teacher.firstName} ${teacher.lastName}` : 'Unknown',
+        avatar: teacher?.avatar || null,
+        sessionsCompleted: totalSessions,
+        avgTrialsPerSession: s._avg.totalTrials ? Math.round(s._avg.totalTrials * 10) / 10 : 0,
+        avgIndependence: Math.round(independence * 10) / 10,
+        incidentRate: totalSessions > 0 ? Math.round((incidentCount / totalSessions) * 100) / 100 : 0,
+        reviewPercentage: totalSessions > 0 ? Math.round((reviewedCount / totalSessions) * 100) : 0,
+      };
+
+      // Determine performance tier
+      const score =
+        (metrics.avgIndependence > 80 ? 2 : metrics.avgIndependence > 60 ? 1 : 0) +
+        (metrics.incidentRate < 0.5 ? 2 : metrics.incidentRate < 1 ? 1 : 0) +
+        (metrics.reviewPercentage >= 80 ? 1 : 0);
+
+      return {
+        ...metrics,
+        performanceTier: score >= 4 ? 'EXCELLENT' : score >= 2 ? 'GOOD' : 'NEEDS_IMPROVEMENT',
+      };
+    });
+  }
+
   static async generateBiAnnual(studentId: string) {
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -299,7 +435,7 @@ export class ReportService {
       summary: {
         sessionsCompleted: sessions,
         goalsAssigned: goals.length,
-        goalsMastered: goals.filter((g) => g.status === 'MASTERED').length,
+        goalsMastered: goals.filter((g: any) => g.status === 'MASTERED').length,
         behaviorIncidents: incidents,
       },
       goals,

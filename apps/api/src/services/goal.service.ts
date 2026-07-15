@@ -38,7 +38,7 @@ export class GoalService {
     ]);
 
     return {
-      data: goals.map((g) => ({
+      data: goals.map((g: any) => ({
         ...g,
         usageCount: g._count.assignments,
         _count: undefined,
@@ -297,8 +297,8 @@ export class GoalService {
 
     // Group by station
     const byStation = {
-      STATION_1: assignments.filter((a) => a.station === 'STATION_1'),
-      STATION_2: assignments.filter((a) => a.station === 'STATION_2'),
+      STATION_1: assignments.filter((a: any) => a.station === 'STATION_1'),
+      STATION_2: assignments.filter((a: any) => a.station === 'STATION_2'),
     };
 
     return byStation;

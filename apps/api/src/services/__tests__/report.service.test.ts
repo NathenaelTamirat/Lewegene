@@ -118,11 +118,12 @@ describe('ReportService', () => {
 
       const result = await ReportService.getIncidentTrends();
 
-      expect(result).toHaveLength(3);
-      expect(result[0]).toMatchObject({
-        date: '2026-07-10',
-        count: 1,
-        category: 'AGGRESSION',
+      expect(result.trends).toBeDefined();
+      expect(result.totalIncidents).toBe(3);
+      expect(result.trends[0]).toMatchObject({
+        month: expect.any(String),
+        categories: expect.any(Array),
+        total: expect.any(Number),
       });
     });
 

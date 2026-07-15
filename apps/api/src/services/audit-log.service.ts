@@ -72,8 +72,8 @@ export class AuditLogService {
     return {
       total,
       last30Days: recentCount,
-      byEntity: byEntity.map((e) => ({ entity: e.entity, count: e._count })),
-      recentActions: recentByDay.map((a) => ({ action: a.action, count: a._count })),
+      byEntity: byEntity.map((e: any) => ({ entity: e.entity, count: e._count })),
+      recentActions: recentByDay.map((a: any) => ({ action: a.action, count: a._count })),
     };
   }
 }

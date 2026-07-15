@@ -35,11 +35,11 @@ router.get('/foundation-overview', authorize('reports:view'), async (_req: Reque
 
 router.get('/incident-trends', async (req: Request, res: Response) => {
   try {
-    const { studentId, start, end } = req.query;
+    const { studentId, startDate, endDate } = req.query;
     const trends = await ReportService.getIncidentTrends(
       studentId as string,
-      start as string,
-      end as string
+      startDate as string,
+      endDate as string
     );
     res.json({ success: true, data: trends });
   } catch (error) {
@@ -69,6 +69,16 @@ router.get('/filtered', async (req: Request, res: Response) => {
       limit: limit ? parseInt(limit as string, 10) : undefined,
     });
     res.json({ success: true, ...result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
+  }
+});
+
+router.get('/teacher-performance', async (req: Request, res: Response) => {
+  try {
+    const { teacherId } = req.query;
+    const performance = await ReportService.getTeacherPerformance(teacherId as string | undefined);
+    res.json({ success: true, data: performance });
   } catch (error) {
     res.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Failed' });
   }

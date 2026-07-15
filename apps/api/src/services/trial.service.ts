@@ -110,7 +110,7 @@ export class TrialService {
     if (goal.type === 'STANDARD') {
       // For standard goals, calculate success rate
       const totalTrials = assignment.trials.length;
-      const successes = assignment.trials.filter((t) => t.outcome === 'SUCCESS').length;
+      const successes = assignment.trials.filter((t: any) => t.outcome === 'SUCCESS').length;
       const progress = totalTrials > 0 ? (successes / totalTrials) * 100 : 0;
 
       await prisma.goalAssignment.update({
@@ -129,8 +129,8 @@ export class TrialService {
 
       let masteredSteps = 0;
       for (const step of steps) {
-        const stepTrials = assignment.trials.filter((t) => t.stepId === step.id);
-        const stepSuccesses = stepTrials.filter((t) => t.outcome === 'SUCCESS').length;
+        const stepTrials = assignment.trials.filter((t: any) => t.stepId === step.id);
+        const stepSuccesses = stepTrials.filter((t: any) => t.outcome === 'SUCCESS').length;
         const stepProgress = stepTrials.length > 0 ? (stepSuccesses / stepTrials.length) * 100 : 0;
 
         if (stepProgress >= 80) {

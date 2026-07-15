@@ -78,6 +78,7 @@ export class AssessmentService {
   static async review(id: string) {
     const assessment = await prisma.assessment.findUnique({
       where: { id },
+      include: { student: true },
     });
 
     if (!assessment) {
@@ -92,6 +93,13 @@ export class AssessmentService {
       },
     });
 
+    if (assessment.student) {
+      await prisma.student.update({
+        where: { id: assessment.studentId },
+        data: { status: 'READY_FOR_IUP' },
+      });
+    }
+
     return updated;
   }
 
@@ -105,8 +113,8 @@ export class AssessmentService {
 
     const requiredTypes = ['SKILLS_ABLLS', 'BEHAVIOR_MASS', 'PREFERENCE'];
     const completedTypes = assessments
-      .filter((a) => a.status === 'COMPLETE' || a.status === 'REVIEWED')
-      .map((a) => a.type);
+      .filter((a: any) => a.status === 'COMPLETE' || a.status === 'REVIEWED')
+      .map((a: any) => a.type);
 
     const allComplete = requiredTypes.every((type) => completedTypes.includes(type as any));
 

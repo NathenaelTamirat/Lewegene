@@ -190,7 +190,7 @@ export class SessionService {
       endTime: block.endTime,
       status: assignment?.status || 'IN_PROGRESS',
       teacher: assignment?.teacher || { firstName: '', lastName: '' },
-      assignments: summaries.map((s) => ({
+      assignments: summaries.map((s: any) => ({
         student: s.student,
         goals: (s.goalData as any) || {},
       })),
